@@ -18,10 +18,16 @@ dotenv.config();
 
 const app = express();
 
-// ✅ CORS for production
+// ✅ Your deployed frontend + localhost (for testing)
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://real-time-chat-dpnlzaco5-z5sus-projects.vercel.app",
+];
+
+// ✅ Express CORS
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "*",
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
@@ -44,15 +50,17 @@ const PORT = process.env.PORT || 5000;
 
 const server = http.createServer(app);
 
-// Socket.io server
+// ✅ Socket.io server CORS
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "*",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
 // Store online users
+// key = userId , value = socketId
 const onlineUsers = new Map();
 
 // 🔐 Socket Auth Middleware
@@ -102,7 +110,7 @@ io.on("connection", (socket) => {
         text,
       });
 
-      // Send message back to sender
+      // Send message back to sender (instant update)
       socket.emit("newMessage", message);
 
       // Send message to receiver if online
