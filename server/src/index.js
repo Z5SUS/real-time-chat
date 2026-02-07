@@ -18,16 +18,28 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Your deployed frontend + localhost (for testing)
+/**
+ * ✅ Allowed Frontend URLs
+ * Add your Vercel URL here
+ */
 const allowedOrigins = [
   "http://localhost:5173",
   "https://real-time-chat-dpnlzaco5-z5sus-projects.vercel.app",
 ];
 
-// ✅ Express CORS
+// ✅ CORS for REST API
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      // allow Postman/ThunderClient (no origin)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   }),
 );
@@ -60,7 +72,6 @@ const io = new Server(server, {
 });
 
 // Store online users
-// key = userId , value = socketId
 const onlineUsers = new Map();
 
 // 🔐 Socket Auth Middleware
@@ -98,7 +109,6 @@ io.on("connection", (socket) => {
   // Broadcast online users list
   io.emit("onlineUsers", Array.from(onlineUsers.keys()));
 
-  // Listen for sending message
   socket.on("sendMessage", async ({ receiverId, text }) => {
     try {
       if (!receiverId || !text) return;
@@ -110,7 +120,7 @@ io.on("connection", (socket) => {
         text,
       });
 
-      // Send message back to sender (instant update)
+      // Send message back to sender
       socket.emit("newMessage", message);
 
       // Send message to receiver if online
@@ -128,7 +138,6 @@ io.on("connection", (socket) => {
     console.log("❌ Socket disconnected:", socket.id);
 
     onlineUsers.delete(socket.user._id.toString());
-
     io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
 });
